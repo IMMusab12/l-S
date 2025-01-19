@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase To-Do App</title>
+    <script type="module" src="https://unpkg.com/@splinetool/viewer@1.9.59/build/spline-viewer.js"></script>
+    
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f7f7f7;
+        }
+        input {
+            padding: 10px;
+            margin-right: 10px;
+            width: 300px;
+        }
+        button {
+            padding: 10px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        ul {
+            margin-top: 20px;
+        }
+        li {
+            background-color: white;
+            padding: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 5px;
+        }
+        li button {
+            background-color: red;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>My To-Do List</h1>
+
+    <div>
+        <input type="text" id="todo-input" placeholder="Enter new task...">
+        <button id="add-btn">Add Task</button>
+    </div>
+
+    <ul id="todo-list"></ul>
+    
+    <script type="module">
+        // Import Firebase SDK modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/11.2.0/firebase-firestore.js";
+
+        // Firebase config and initialization
+        const firebaseConfig = {
+    apiKey: "AIzaSyBXoCSU9eNeyhDRJQqeirUsD1937ON9jpQ",
+    authDomain: "sign-in-to-sign-up.firebaseapp.com",
+    projectId: "sign-in-to-sign-up",
+    storageBucket: "sign-in-to-sign-up.firebasestorage.app",
+    messagingSenderId: "1051051491067",
+    appId: "1:1051051491067:web:fbdab2f37fb4e51a8bfa5e",
+    measurementId: "G-JR1K1FWT6X"
+  };
+
+        // Initialize Firebase and Firestore
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // DOM Elements
+        const todoInput = document.getElementById('todo-input');
+        const addButton = document.getElementById('add-btn');
+        const todoList = document.getElementById('todo-list');
+
+        // Add Task to Firestore
+        async function addTaskToFirestore(task) {
+            try {
+                // Add a new task document to the "todos" collection
+                const docRef = await addDoc(collection(db, 'todos'), {
+                    task: task,  // Task description
+                    completed: false,  // Default completion status is false
+                    createdAt: new Date()  // Timestamp of task creation
+                });
+                let message = Swal.fire({
+                        title: "Add Task",
+                        text: "It has been Stored",
+                        icon: "success"
+
+                   });
+                getTasks();  // Refresh task list after adding new task
+            } catch (e) {
+                console.error("Error adding task:", e);
+            }
+        }
+
+        // Get Tasks from Firestore
+        async function getTasks() {
+            // Retrieve all tasks from Firestore
+            const querySnapshot = await getDocs(collection(db, "todos"));
+            todoList.innerHTML = '';  // Clear the list before adding new tasks
+            querySnapshot.forEach((doc) => {
+                const todo = doc.data();
+                const li = document.createElement('li');
+                li.textContent = todo.task;
+                li.setAttribute('data-id', doc.id);
+                
+                // Add delete button for each task
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                deleteButton.addEventListener('click', () => deleteTask(doc.id));
+
+                // Add complete/incomplete toggle button
+                const toggleButton = document.createElement('button');
+                toggleButton.textContent = todo.completed ? 'Mark Incomplete' : 'Mark Completed';
+                toggleButton.addEventListener('click', () => toggleTaskCompletion(doc.id, todo.completed));
+
+                li.appendChild(toggleButton);
+                li.appendChild(deleteButton);
+                todoList.appendChild(li);
+            });
+        }
+
+        // Delete Task from Firestore
+        async function deleteTask(taskId) {
+            try {
+                const taskDoc = doc(db, "todos", taskId);
+                await deleteDoc(taskDoc);   
+                let dmessage = Swal.fire({
+                        title: "Deleted",
+                        text:  "Task Sucssesfully Deleted",
+                        icon: "error"
+
+                   });
+                getTasks();  // Refresh task list after deletion
+            } catch (e) {
+                console.error("Error deleting task:", e);
+            }
+        }
+
+        // Toggle Task Completion (Mark as completed/incomplete)
+        async function toggleTaskCompletion(taskId, currentStatus) {
+            try {
+                const taskDoc = doc(db, "todos", taskId);
+                await updateDoc(taskDoc, {
+                    completed: !currentStatus  // Toggle the current status
+                });
+                getTasks();  // Refresh task list after update
+            } catch (e) {
+                console.error("Error updating task:", e);
+            }
+        }
+
+        // Event listener for adding tasks
+        addButton.addEventListener('click', () => {
+            const task = todoInput.value.trim();
+            if (task) {
+                addTaskToFirestore(task);
+                todoInput.value = '';  // Clear input
+            }
+        });
+
+        // Initial load of tasks when page is loaded
+        getTasks();
+    </script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</body>
+</html>
